@@ -72,3 +72,13 @@ resource "vsphere_content_library" "lobster_pub" {
     published             = var.lobster_content_library_pub_enabled
   }
 }
+
+resource "vsphere_content_library_item" "content_library_item" {
+  count = length(var.content_library_items)
+
+  name        = var.content_library_items[count.index].name
+  description = var.content_library_items[count.index].description
+  file_url    = var.content_library_items[count.index].file_url 
+  type = var.content_library_items[count.index].type
+  library_id  = resource.vsphere_content_library.lobster_pub.id
+}

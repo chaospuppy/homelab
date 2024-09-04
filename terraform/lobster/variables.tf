@@ -180,3 +180,14 @@ variable "lobster_content_library_sub_on_demand" {
   default     = false
   description = "Determines if the publish content library should be synced to subscribed content libraries on-demand"
 }
+
+variable "content_library_items" {
+  type = list(object({
+    name = string,
+    description = string,
+    file_url = string
+    type = string
+  }))
+  default = []
+  description = "List of content library items to import into the lobster content library"
+}
