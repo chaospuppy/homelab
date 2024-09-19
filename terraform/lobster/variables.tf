@@ -169,18 +169,6 @@ variable "lobster_content_library_pub_enabled" {
   description = "Determines if the publish content library can be subscribed to, and consequently if subscription content libraries are created"
 }
 
-variable "lobster_content_library_sub_auto_sync" {
-  type        = bool
-  default     = true
-  description = "Determines if the publish content library should be automatically synced to subscribed content libraries"
-}
-
-variable "lobster_content_library_sub_on_demand" {
-  type        = bool
-  default     = false
-  description = "Determines if the publish content library should be synced to subscribed content libraries on-demand"
-}
-
 variable "content_library_items" {
   type = list(object({
     name = string,
