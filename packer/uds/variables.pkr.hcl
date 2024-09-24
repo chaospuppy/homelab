@@ -70,36 +70,6 @@ variable "http_directory" {
   description = "Name of the local directory containing the kickstart file to be used for booting the UDS nodes"
 }
 
-variable "ubuntu_boot_command" {
-  type = list(string)
-  default = [
-    "e<wait><down><down><down><end>",
-    " autoinstall 'ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/cloud-init/'",
-    "<wait><F10><wait>"
-  ]
-  description = "Boot command to execute on Ubuntu build VM"
-}
-
-variable "rhel_boot_command" {
-  type = list(string)
-  default = [
-    "<up>",
-    "<tab>",
-    "<spacebar>",
-    "inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/uds.ks",
-    "<spacebar>",
-    "fips=1",
-    "<enter>"
-  ]
-  description = "Boot command to execute on RHEL build VM"
-}
-
-variable "http_ip" {
-  type = string
-  default = null
-  description = "IP address to serve the kickstart file at"
-}
-
 variable "uds_packer_cluster_name" {
   type        = string
   default     = "lobster_CC"
@@ -273,7 +243,6 @@ variable "rke2_version" {
 variable "ubuntu_pro_token" {
   type        = string
   description = "Token for a valid Ubuntu Pro subscription to use for FIPS packages"
-  default     = ""
   sensitive   = true
 }
 
@@ -294,3 +263,12 @@ variable "ssh_timeout" {
   default = "5m"
   description = "Amount of time to wait for SSH connection to be established for provisioner steps"
 } 
+ variable "common_data_source" {
+  type = string
+  default = "disk"
+  description = "Defines how kickstart or autoinstall content is made available"
+  validation {
+    condition = contains(["disk", "http"], var.common_data_source)
+    error_message = "The common_data_source must be one of 'disk' or 'http'."
+  }
+}

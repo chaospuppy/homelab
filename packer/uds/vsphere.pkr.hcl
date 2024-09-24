@@ -16,7 +16,7 @@ locals {
   vm_name = "${var.uds_packer_vm_name}_${var.linux_distro}_${var.k8s_distro}"
   uds_content_library_item_description = var.uds_content_library_item_description != null ? var.uds_content_library_item_description : local.vm_name
   shutdown_command = var.uds_packer_vm_shutdown_command == "" ? "sudo su -c \"shutdown -P now\"" : var.uds_packer_vm_shutdown_command
-  http_content = {
+  data_source_content = {
     "/uds.ks" = templatefile("${abspath(path.root)}/http/uds_ks.pkrtpl", {
       root_password = bcrypt(var.root_password)
       rhsm_username = var.rhsm_username
@@ -24,13 +24,27 @@ locals {
       persistent_admin_username = var.persistent_admin_username
       persistent_admin_password = bcrypt(var.persistent_admin_password)
     })
-    "/cloud-init/user-data" = templatefile("${abspath(path.root)}/http/uds_user_data.pkrtpl", {
+    "/user-data" = templatefile("${abspath(path.root)}/http/uds_user_data.pkrtpl", {
       root_password = bcrypt(var.root_password)
       persistent_admin_username = var.persistent_admin_username
       persistent_admin_password = bcrypt(var.persistent_admin_password)
     })
-    "/cloud-init/meta-data" = templatefile("${abspath(path.root)}/http/uds_meta_data.pkrtpl", {})
+    "/meta-data" = templatefile("${abspath(path.root)}/http/uds_meta_data.pkrtpl", {})
   }
+  data_source_command = var.common_data_source == "http" ? "ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/" : "ds=nocloud"
+  boot_command = var.linux_distro == "ubuntu" ? [
+    "e<wait><down><down><down><end>",
+    " autoinstall '${local.data_source_command}'",
+    "<wait><F10><wait>"
+    ] : [
+    "<up>",
+    "<tab>",
+    "<spacebar>",
+    "inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/uds.ks",
+    "<spacebar>",
+    "fips=1",
+    "<enter>"
+  ]
 }
 
 source "vsphere-iso" "rke2-base" {
@@ -76,9 +90,10 @@ source "vsphere-iso" "rke2-base" {
   guest_os_type = var.uds_os_type
 
   # Temporary VM boot configuration
-  boot_command = var.linux_distro == "ubuntu" ? var.ubuntu_boot_command : var.rhel_boot_command
-  http_content = local.http_content
-  http_ip = var.http_ip != null ? var.http_ip : ""
+  boot_command = local.boot_command
+  http_content = var.common_data_source == "http" ? local.data_source_content : null
+  cd_content     = var.common_data_source == "disk" ? local.data_source_content : null
+  cd_label       = var.common_data_source == "disk" ? "cidata" : null
 
   # Temporary VM shutdown configuration
   shutdown_timeout = var.uds_packer_vm_shutdown_timeout
@@ -116,7 +131,7 @@ build {
 
   provisioner "shell" {
     execute_command = "chmod +x {{ .Path }}; sudo {{ .Vars }} {{ .Path }}"
-    script          = "./scripts//install-deps.sh"
+    script          = "./scripts/install-deps.sh"
     timeout         = "20m"
   }
 
@@ -126,7 +141,7 @@ build {
     ]
     // STIG-ing must be run as root
     execute_command   = "chmod +x {{ .Path }}; sudo {{ .Vars }} {{ .Path }}"
-    script            = "./scripts//os-stig.sh"
+    script            = "./scripts/os-stig.sh"
     expect_disconnect = true
     timeout           = "20m"
   }
@@ -137,7 +152,7 @@ build {
     ]
     // RKE2 artifact unpacking/install must be run as root
     execute_command = "chmod +x {{ .Path }}; sudo {{ .Vars }} {{ .Path }}"
-    script          = "./scripts//rke2-install.sh"
+    script          = "./scripts/rke2-install.sh"
     timeout         = "15m"
     max_retries = 3 # Occationally first-attempt will fail, potentially due to the restart mandated by os-stig.sh
   }
@@ -145,18 +160,18 @@ build {
   provisioner "shell" {
     // RKE2 artifact unpacking/install must be run as root
     execute_command = "chmod +x {{ .Path }}; sudo {{ .Vars }} {{ .Path }}"
-    script          = "./scripts//os-prep.sh"
+    script          = "./scripts/os-prep.sh"
     timeout         = "15m"
   }
 
   provisioner "shell" {
     execute_command = "chmod +x {{ .Path }}; sudo {{ .Vars }} {{ .Path }}"
-    script          = "./scripts//cleanup-deps.sh"
+    script          = "./scripts/cleanup-deps.sh"
     timeout         = "15m"
   }
 
   provisioner "file" {
-    source      = "./scripts//rke2-startup.sh"
+    source      = "./scripts/rke2-startup.sh"
     destination = "/tmp/rke2-startup.sh"
   }
 
@@ -170,13 +185,13 @@ build {
       "RKE2_STARTUP_DIR=/opt"
     ]
     execute_command = "chmod +x {{ .Path }}; sudo {{ .Vars }} {{ .Path }}"
-    script          = "./scripts//rke2-config.sh"
+    script          = "./scripts/rke2-config.sh"
     timeout         = "15m"
   }
 
   provisioner "shell" {
     execute_command = "chmod +x {{ .Path }}; sudo {{ .Vars }} {{ .Path }}"
-    script          = "./scripts//cleanup-cloud-init.sh"
+    script          = "./scripts/cleanup-cloud-init.sh"
     timeout         = "15m"
   }
 
