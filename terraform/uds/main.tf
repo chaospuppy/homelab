@@ -100,11 +100,12 @@ resource "vsphere_virtual_machine" "uds_control_plane" {
 
   provisioner "remote-exec" {
     inline = [
+      "#!/bin/bash",
+      "sleep 4m", # The VMs need enough time to get the correct time.  4 is my favoriate magic number.
       "DISTRO=$( cat /etc/os-release | tr [:upper:] [:lower:] | grep -Poi '(ubuntu|rhel)' | uniq )",
       "if [[ $DISTRO == 'ubuntu' ]]; then lvresize -rl +100%FREE /dev/ubuntu-vg/ubuntu-lv; fi",
       # Add a nameserver to /etc/resolv.conf to prevent CoreDNS CrashLoopBackoff
       "if [[ $DISTRO != 'ubuntu' ]]; then echo 'nameserver 8.8.8.8' > ~/resolv.conf.tmp && sudo cp ~/resolv.conf.tmp /etc/resolv.conf && rm ~/resolv.conf.tmp; fi",
-      "sleep 4m",                                                       # The VMs need enough time to get the correct time.  4 is my favoriate magic number.
       "sudo hostnamectl set-hostname uds-control-plane-${count.index}", # host_name above didn't take effect for Ubuntu
       count.index == 0 ?
       "sudo /opt/rke2-startup.sh -s $(ip route get $(ip route show 0.0.0.0/0 | grep -oP 'via \\K\\S+') | grep -oP 'src \\K\\S+') -t ${random_password.rke2_token.result}" :
@@ -167,6 +168,7 @@ resource "vsphere_virtual_machine" "uds_worker" {
 
   provisioner "remote-exec" {
     inline = [
+      "#!/bin/bash",
       "DISTRO=$( cat /etc/os-release | tr [:upper:] [:lower:] | grep -Poi '(ubuntu|rhel)' | uniq )",
       "if [[ $DISTRO == 'ubuntu' ]]; then lvresize -rl +100%FREE /dev/ubuntu-vg/ubuntu-lv; fi",
       "if [[ $DISTRO != 'ubuntu' ]]; then echo 'nameserver 8.8.8.8' > ~/resolv.conf.tmp && sudo cp ~/resolv.conf.tmp /etc/resolv.conf && rm ~/resolv.conf.tmp; fi", # this is gross
