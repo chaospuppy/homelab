@@ -77,19 +77,19 @@ variable "uds_control_plane_cpus" {
 
 variable "uds_control_plane_memory" {
   type        = number
-  default     = 4096
+  default     = 12288
   description = "Amount of memory, in MB, to make available to UDS control plane nodes"
 }
 
 variable "uds_worker_cpus" {
   type        = number
-  default     = 4
+  default     = 6
   description = "Number of CPUs to make available to UDS worker nodes"
 }
 
 variable "uds_worker_memory" {
   type        = number
-  default     = 4096
+  default     = 12288
   description = "Amount of memory, in MB, to make available to UDS worker nodes"
 }
 
@@ -148,11 +148,17 @@ variable "uds_disk_thin_provisioned" {
 }
 
 variable "persistent_admin_username" {
-  type      = string
-  sensitive = true
+  type = string
+  # sensitive = true
 }
 
 variable "persistent_admin_password" {
   type      = string
   sensitive = true
+}
+
+variable "debug" {
+  type        = bool
+  default     = false
+  description = "If debug is enabled, then the token generated from Rancher will not be marked sensative, allowing more complete logging."
 }

@@ -5,6 +5,10 @@ provider "vsphere" {
   allow_unverified_ssl = var.allow_unverified_ssl
 }
 
+locals {
+  rke2_token = var.debug ? random_string.rke2_token[0].result : random_password.rke2_token[0].result
+}
+
 data "vsphere_datacenter" "uds" {
   name = var.uds_datacenter_name
 }
@@ -42,7 +46,14 @@ data "vsphere_virtual_machine" "template" {
   datacenter_id = data.vsphere_datacenter.lobster.id
 }
 
+resource "random_string" "rke2_token" {
+  count   = var.debug == true ? 1 : 0
+  length  = 16
+  special = false
+}
+
 resource "random_password" "rke2_token" {
+  count   = var.debug == false ? 1 : 0
   length  = 16
   special = false
 }
@@ -103,13 +114,13 @@ resource "vsphere_virtual_machine" "uds_control_plane" {
       "#!/bin/bash",
       "sleep 4m", # The VMs need enough time to get the correct time.  4 is my favoriate magic number.
       "DISTRO=$( cat /etc/os-release | tr [:upper:] [:lower:] | grep -Poi '(ubuntu|rhel)' | uniq )",
-      "if [[ $DISTRO == 'ubuntu' ]]; then lvresize -rl +100%FREE /dev/ubuntu-vg/ubuntu-lv; fi",
+      "if [[ $DISTRO == 'ubuntu' ]]; then sudo lvresize -rl +100%FREE /dev/ubuntu-vg/ubuntu-lv; fi",
       # Add a nameserver to /etc/resolv.conf to prevent CoreDNS CrashLoopBackoff
       "if [[ $DISTRO != 'ubuntu' ]]; then echo 'nameserver 8.8.8.8' > ~/resolv.conf.tmp && sudo cp ~/resolv.conf.tmp /etc/resolv.conf && rm ~/resolv.conf.tmp; fi",
       "sudo hostnamectl set-hostname uds-control-plane-${count.index}", # host_name above didn't take effect for Ubuntu
       count.index == 0 ?
-      "sudo /opt/rke2-startup.sh -s $(ip route get $(ip route show 0.0.0.0/0 | grep -oP 'via \\K\\S+') | grep -oP 'src \\K\\S+') -t ${random_password.rke2_token.result}" :
-      "sudo /opt/rke2-startup.sh -s ${vsphere_virtual_machine.uds_control_plane[0].default_ip_address} -t ${random_password.rke2_token.result}",
+      "sudo /opt/rke2-startup.sh -s $(ip route get $(ip route show 0.0.0.0/0 | grep -oP 'via \\K\\S+') | grep -oP 'src \\K\\S+') -t ${local.rke2_token}" :
+      "sudo /opt/rke2-startup.sh -s ${vsphere_virtual_machine.uds_control_plane[0].default_ip_address} -t ${local.rke2_token}",
       "sudo cp /etc/rancher/rke2/rke2.yaml ~/",
       "sudo chown ${var.persistent_admin_username}:${var.persistent_admin_username} ~/rke2.yaml"
     ]
@@ -174,7 +185,7 @@ resource "vsphere_virtual_machine" "uds_worker" {
       "if [[ $DISTRO != 'ubuntu' ]]; then echo 'nameserver 8.8.8.8' > ~/resolv.conf.tmp && sudo cp ~/resolv.conf.tmp /etc/resolv.conf && rm ~/resolv.conf.tmp; fi", # this is gross
       "sleep 4m",                                                                                                                                                   # The VMs need enough time to get the correct time.  4 is my favoriate magic number.
       "sudo hostnamectl set-hostname uds-worker-${count.index}",                                                                                                    # host_name above didn't take effect for Ubuntu
-      "sudo /opt/rke2-startup.sh -s ${vsphere_virtual_machine.uds_control_plane[0].default_ip_address} -t ${random_password.rke2_token.result} -a",
+      "sudo /opt/rke2-startup.sh -s ${vsphere_virtual_machine.uds_control_plane[0].default_ip_address} -t ${local.rke2_token} -a",
     ]
   }
 }

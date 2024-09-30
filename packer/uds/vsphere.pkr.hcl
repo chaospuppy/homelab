@@ -179,7 +179,7 @@ build {
     source      = "./files"
     destination = "/tmp"
   }
-
+  
   provisioner "shell" {
     environment_vars = [
       "RKE2_STARTUP_DIR=/opt"

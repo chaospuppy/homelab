@@ -22,6 +22,16 @@ chown -R root:root $config_dir/audit-policy.yaml
 mv -f $file_dir/default-pss.yaml $config_dir/default-pss.yaml
 chown -R root:root $config_dir/default-pss.yaml
 
+# Stage sysctl, firewall, module load, and limits files
+chown -R root:root $file_dir/etc/sysctl.d/*
+sudo mv $file_dir/etc/sysctl.d/* /etc/sysctl.d
+chown -R root:root $file_dir/etc/ufw/*
+sudo mv $file_dir/etc/ufw/applications.d/* /etc/ufw/applications.d
+chown -R root:root $file_dir/etc/security/*
+sudo mv $file_dir/etc/security/limits.d/* /etc/security/limits.d
+chown -R root:root $file_dir/etc/modules-load.d/*
+sudo mv $file_dir/etc/modules-load.d/* /etc/modules-load.d
+
 # Run restorecon to re-label files moved from /tmp
 if [[ $( cat /etc/os-release | tr [:upper:] [:lower:] | grep -Poi '(ubuntu|rhel)' | uniq ) == "rhel" ]]; then
   restorecon -R $config_dir
