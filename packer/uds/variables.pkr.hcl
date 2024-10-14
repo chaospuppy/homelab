@@ -237,7 +237,7 @@ variable "vm_disk_controller_type" {
 variable "rke2_version" {
   type        = string
   description = "RKE2 version to install on the Image"
-  default     = "v1.29.3+rke2r1"
+  default     = "v1.31.1+rke2r1"
 }
 
 variable "ubuntu_pro_token" {
@@ -249,7 +249,7 @@ variable "ubuntu_pro_token" {
 variable "skip_import" {
   type = bool
   default = true
-  description = "Set to false to import an OVF file to the content library" 
+  description = "Set to false to import an OVF file to the content library"
 }
 
 variable "vm_template_folder" {
@@ -262,7 +262,7 @@ variable "ssh_timeout" {
   type = string
   default = "5m"
   description = "Amount of time to wait for SSH connection to be established for provisioner steps"
-} 
+}
  variable "common_data_source" {
   type = string
   default = "disk"
