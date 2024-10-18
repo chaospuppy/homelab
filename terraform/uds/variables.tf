@@ -119,13 +119,13 @@ variable "uds_disk_label_prefix" {
 
 variable "uds_control_plane_disk_size" {
   type        = number
-  default     = 50
+  default     = 200
   description = "Size of control plane disk in GB"
 }
 
 variable "uds_worker_disk_size" {
   type        = number
-  default     = 50
+  default     = 200
   description = "Size of worker disk in GB"
 }
 
