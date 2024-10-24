@@ -1,0 +1,36 @@
+---
+# tasks file for rke2-controlplane
+- name: Set hostname
+  ansible.builtin.hostname:
+    use: "debian"
+    name: "uds-control-plane-{{ groups['controlplane'].index(inventory_hostname) }}"
+  when: ansible_facts['os_family'] | lower == 'debian'
+
+- name: Initialize cluster control plane
+  ansible.builtin.command:
+    cmd: /opt/rke2-startup.sh -s {{ hostvars[groups['controlplane'][0]]['ansible_default_ipv4']['address'] }} -t {{ rke2_token }} && touch /home/tim/.ansible-cluster-init
+    creates: /home/tim/.ansible-cluster-init
+  when: groups['controlplane'].index(inventory_hostname) == 0
+
+- name: Wait for first control plane to come up before adding new nodes
+  ansible.builtin.wait_for:
+    host: "{{ hostvars[groups['controlplane'][0]]['ansible_default_ipv4']['address'] }}"
+    port: 9345 
+    timeout: 300
+
+- name: Join additional control plane nodes
+  ansible.builtin.command:
+    cmd: /opt/rke2-startup.sh -s {{ hostvars[groups['controlplane'][0]]['ansible_default_ipv4']['address'] }} -t {{ rke2_token }} && touch /home/tim/.ansible-cluster-init
+    creates: /home/tim/.ansible-cluster-init
+  when: groups['controlplane'].index(inventory_hostname) != 0
+
+- name: Wait until rke2.yaml is present before continuing
+  ansible.builtin.wait_for:
+    path: /etc/rancher/rke2/rke2.yaml
+    timeout: 300
+
+- name: Get rke2.yaml from first controlplane node
+  ansible.builtin.fetch:
+    src: /etc/rancher/rke2/rke2.yaml
+    dest: /tmp/
+  when: hostvars[groups['controlplane'][0]]['ansible_default_ipv4']['address'] == hostvars[inventory_hostname]['ansible_default_ipv4']['address']

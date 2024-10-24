@@ -1,0 +1,22 @@
+---
+# tasks file for rke2-prep
+- name: Resize root partition
+  ansible.builtin.shell: 
+    cmd: growpart /dev/sda 3 || true && touch /home/tim/.ansible-resize-root-part
+    creates: /home/tim/.ansible-resize-root-part
+  when: ansible_facts['os_family'] | lower == 'debian'
+
+- name: Resize root Logical Volume
+  community.general.lvol:
+    resizefs: true
+    vg: ubuntu-vg
+    lv: ubuntu-lv
+    size: 100%FREE
+
+- name: Configure default DNS nameserver
+  ansible.builtin.lineinfile:
+    path: /etc/resolv.conf
+    line: "nameserver 8.8.8.8"
+    create: true
+    mode: '0644'
+  when: ansible_facts['os_family'] | lower == 'debian'

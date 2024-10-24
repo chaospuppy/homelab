@@ -108,28 +108,6 @@ resource "vsphere_virtual_machine" "uds_control_plane" {
     password = var.persistent_admin_password
     host     = self.default_ip_address
   }
-
-  provisioner "remote-exec" {
-    inline = [
-      "#!/bin/bash",
-      "sleep 4m", # The VMs need enough time to get the correct time.  4 is my favoriate magic number.
-      "DISTRO=$( cat /etc/os-release | tr [:upper:] [:lower:] | grep -Poi '(ubuntu|rhel)' | uniq )",
-      "if [[ $DISTRO == 'ubuntu' ]]; then sudo growpart /dev/sda 3; sudo lvresize -rl +100%FREE /dev/ubuntu-vg/ubuntu-lv; fi",
-      # Add a nameserver to /etc/resolv.conf to prevent CoreDNS CrashLoopBackoff
-      "if [[ $DISTRO != 'ubuntu' ]]; then echo 'nameserver 8.8.8.8' > ~/resolv.conf.tmp && sudo cp ~/resolv.conf.tmp /etc/resolv.conf && rm ~/resolv.conf.tmp; fi",
-      "sudo hostnamectl set-hostname uds-control-plane-${count.index}", # host_name above didn't take effect for Ubuntu
-      count.index == 0 ?
-      "sudo /opt/rke2-startup.sh -s $(ip route get $(ip route show 0.0.0.0/0 | grep -oP 'via \\K\\S+') | grep -oP 'src \\K\\S+') -t ${local.rke2_token}" :
-      "sudo /opt/rke2-startup.sh -s ${vsphere_virtual_machine.uds_control_plane[0].default_ip_address} -t ${local.rke2_token}",
-      "sudo cp /etc/rancher/rke2/rke2.yaml ~/",
-      "sudo chown ${var.persistent_admin_username}:${var.persistent_admin_username} ~/rke2.yaml"
-    ]
-  }
-
-  provisioner "local-exec" {
-    quiet   = true
-    command = count.index == 0 ? "sshpass -p ${var.persistent_admin_password} scp -q -o Ciphers='aes256-ctr,aes192-ctr,aes128-ctr' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${var.persistent_admin_username}@${self.default_ip_address}:~/rke2.yaml ${path.cwd}/rke2.yaml" : "echo 'rke2.yaml already retrieved, skipping'"
-  }
 }
 
 resource "vsphere_virtual_machine" "uds_worker" {
@@ -176,16 +154,15 @@ resource "vsphere_virtual_machine" "uds_worker" {
     password = var.persistent_admin_password
     host     = self.default_ip_address
   }
+}
 
-  provisioner "remote-exec" {
-    inline = [
-      "#!/bin/bash",
-      "DISTRO=$( cat /etc/os-release | tr [:upper:] [:lower:] | grep -Poi '(ubuntu|rhel)' | uniq )",
-      "if [[ $DISTRO == 'ubuntu' ]]; then sudo growpart /dev/sda 3; sudo lvresize -rl +100%FREE /dev/ubuntu-vg/ubuntu-lv; fi",
-      "if [[ $DISTRO != 'ubuntu' ]]; then echo 'nameserver 8.8.8.8' > ~/resolv.conf.tmp && sudo cp ~/resolv.conf.tmp /etc/resolv.conf && rm ~/resolv.conf.tmp; fi", # this is gross
-      "sleep 4m",                                                                                                                                                   # The VMs need enough time to get the correct time.  4 is my favoriate magic number.
-      "sudo hostnamectl set-hostname uds-worker-${count.index}",                                                                                                    # host_name above didn't take effect for Ubuntu
-      "sudo /opt/rke2-startup.sh -s ${vsphere_virtual_machine.uds_control_plane[0].default_ip_address} -t ${local.rke2_token} -a",
-    ]
+resource "terraform_data" "ansible" {
+  triggers_replace = [
+    vsphere_virtual_machine.uds_worker.*.id,
+    vsphere_virtual_machine.uds_control_plane.*.id,
+  ]
+  provisioner "local-exec" {
+    working_dir = "./ansible/"
+    command     = "echo \"${templatefile("./files/ansible-inventory.yaml.tftpl.hcl", { worker_node_ips = vsphere_virtual_machine.uds_worker.*.default_ip_address, control_plane_ips = vsphere_virtual_machine.uds_control_plane.*.default_ip_address })}\" > /tmp/ansible-inventory && sleep 20 && ansible-playbook rke2.yaml -i /tmp/ansible-inventory -v --ssh-extra-args=\"-o Ciphers='aes256-ctr,aes192-ctr,aes128-ctr' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" --extra-vars \"ansible_ssh_timeout=60 ansible_user=${var.persistent_admin_username} ansible_password=${var.persistent_admin_password} rke2_token=${local.rke2_token}\" -b"
   }
 }

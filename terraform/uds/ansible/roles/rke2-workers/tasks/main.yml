@@ -1,0 +1,18 @@
+---
+# tasks file for rke2-workers
+- name: Set hostname for workers
+  ansible.builtin.hostname:
+    use: "debian"
+    name: "uds-worker-{{ groups['workers'].index(inventory_hostname) }}"
+  when: ansible_facts['os_family'] | lower == 'debian'
+
+- name: Wait for first control plane to come up before adding new nodes
+  ansible.builtin.wait_for:
+    host: "{{ hostvars[groups['controlplane'][0]]['ansible_default_ipv4']['address'] }}"
+    port: 9345 
+    timeout: 300
+
+- name: Join worker to cluster
+  ansible.builtin.shell:
+    cmd: /opt/rke2-startup.sh -s {{ hostvars[groups['controlplane'][0]]['ansible_default_ipv4']['address'] }} -t {{ rke2_token }} -a && touch /home/tim/.ansible-cluster-init
+    creates: /home/tim/.ansible-cluster-init
