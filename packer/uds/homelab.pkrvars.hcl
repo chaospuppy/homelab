@@ -4,3 +4,4 @@ uds_os_type = "ubuntu64Guest"
 # ubuntu_pro_token = "cooltoken"
 # Ubuntu requires a longer timeout due to cloudinit steps executed during boot process
 ssh_timeout = "10m"
+rke2_version = "v1.30.5+rke2r1"

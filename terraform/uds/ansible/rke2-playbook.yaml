@@ -1,0 +1,14 @@
+- hosts: all
+  gather_facts: yes
+  roles:
+    - rke2-prep
+
+- hosts: controlplane
+  gather_facts: yes
+  roles:
+    - rke2-controlplane
+
+- hosts: workers
+  gather_facts: yes
+  roles:
+    - rke2-workers

@@ -5,6 +5,7 @@
     cmd: growpart /dev/sda 3 || true && touch /home/tim/.ansible-resize-root-part
     creates: /home/tim/.ansible-resize-root-part
   when: ansible_facts['os_family'] | lower == 'debian'
+  ignore_errors: true
 
 - name: Resize root Logical Volume
   community.general.lvol:

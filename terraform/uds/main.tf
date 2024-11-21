@@ -163,6 +163,6 @@ resource "terraform_data" "ansible" {
   ]
   provisioner "local-exec" {
     working_dir = "./ansible/"
-    command     = "echo \"${templatefile("./files/ansible-inventory.yaml.tftpl.hcl", { worker_node_ips = vsphere_virtual_machine.uds_worker.*.default_ip_address, control_plane_ips = vsphere_virtual_machine.uds_control_plane.*.default_ip_address })}\" > /tmp/ansible-inventory && sleep 20 && ansible-playbook rke2.yaml -i /tmp/ansible-inventory -v --ssh-extra-args=\"-o Ciphers='aes256-ctr,aes192-ctr,aes128-ctr' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" --extra-vars \"ansible_ssh_timeout=60 ansible_user=${var.persistent_admin_username} ansible_password=${var.persistent_admin_password} rke2_token=${local.rke2_token}\" -b"
+    command     = "echo \"${templatefile("./files/ansible-inventory.yaml.tftpl.hcl", { worker_node_ips = vsphere_virtual_machine.uds_worker.*.default_ip_address, control_plane_ips = vsphere_virtual_machine.uds_control_plane.*.default_ip_address })}\" > /tmp/ansible-inventory && sleep 20 && ansible-playbook rke2-playbook.yaml -i /tmp/ansible-inventory -v --ssh-extra-args=\"-o Ciphers='aes256-ctr,aes192-ctr,aes128-ctr' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\" --extra-vars \"ansible_ssh_timeout=60 ansible_user=${var.persistent_admin_username} ansible_password=${var.persistent_admin_password} rke2_token=${local.rke2_token}\" -b"
   }
 }
