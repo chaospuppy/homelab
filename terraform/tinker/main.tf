@@ -96,10 +96,12 @@ data "vsphere_datastore" "datastores" {
 }
 
 data "terraform_remote_state" "lobster" {
-  backend = "local"
+  backend = "s3"
 
   config = {
-    path = "../lobster/terraform.tfstate"
+    region = "us-west-1"
+    bucket = "homelab-lobster-terraform-state"
+    key    = "lobster.tfstate"
   }
 }
 
