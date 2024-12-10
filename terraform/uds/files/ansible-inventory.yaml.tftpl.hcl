@@ -1,10 +1,7 @@
-controlplane:
-  hosts:
-%{ for host in control_plane_ips }
-    ${host}:
+%{ for group, hosts in groups }
+${group}:
+   hosts:
+%{ for ip in hosts }
+     ${ip}:
 %{ endfor ~}
-workers:
-  hosts:
-%{ for host in worker_node_ips }
-    ${host}:
 %{ endfor ~}

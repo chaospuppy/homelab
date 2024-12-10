@@ -1,0 +1,6 @@
+---
+# defaults file for workers
+rke2_token: ""
+node_taints: []
+node_labels: []
+tls_sans: []

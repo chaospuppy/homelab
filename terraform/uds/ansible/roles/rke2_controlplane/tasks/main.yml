@@ -1,0 +1,62 @@
+---
+# tasks file for rke2-controlplane
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: "uds-control-plane-{{ groups['controlplane'].index(inventory_hostname) }}"
+
+- name: Create RKE2 config directory
+  ansible.builtin.file:
+    path: /etc/rancher/rke2/config.yaml.d
+    state: directory
+    mode: '0640'
+
+- name: Add extra RKE2 config
+  ansible.builtin.template:
+    src: sil-rke2.yaml.j2
+    dest: /etc/rancher/rke2/config.yaml.d/sil-rke2.yaml
+    owner: root
+    group: root
+    mode: '0640'
+
+- name: Start RKE2 server service
+  ansible.builtin.systemd_service:
+    state: restarted
+    name: rke2-server
+    enabled: true
+  when: groups['controlplane'].index(inventory_hostname) == 0
+
+- name: Run RKE2 STIG Rules script
+  ansible.builtin.shell:
+    cmd: /opt/rke2-stig-rules.sh -s && touch /root/.ansible-stig-rules
+    creates: /root/.ansible-stig-rules
+  when: groups['controlplane'].index(inventory_hostname) == 0
+
+- name: Wait for first control plane to come up before adding new nodes
+  ansible.builtin.wait_for:
+    host: "{{ hostvars[groups['controlplane'][0]]['ansible_default_ipv4']['address'] }}"
+    port: 9345
+    timeout: 300
+
+- name: Start RKE2 server service
+  ansible.builtin.systemd_service:
+    state: started
+    name: rke2-server
+    enabled: true
+  when: groups['controlplane'].index(inventory_hostname) != 0
+
+- name: Run RKE2 STIG Rules script
+  ansible.builtin.shell:
+    cmd: /opt/rke2-stig-rules.sh -s && touch /root/.ansible-stig-rules
+    creates: /root/.ansible-stig-rules
+  when: groups['controlplane'].index(inventory_hostname) != 0
+
+- name: Wait until rke2.yaml is present before continuing
+  ansible.builtin.wait_for:
+    path: /etc/rancher/rke2/rke2.yaml
+    timeout: 300
+
+- name: Get rke2.yaml from first controlplane node
+  ansible.builtin.fetch:
+    src: /etc/rancher/rke2/rke2.yaml
+    dest: /tmp/
+  when: hostvars[groups['controlplane'][0]]['ansible_default_ipv4']['address'] == hostvars[inventory_hostname]['ansible_default_ipv4']['address']
