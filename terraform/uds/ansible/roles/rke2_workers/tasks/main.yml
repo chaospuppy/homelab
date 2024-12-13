@@ -1,9 +1,5 @@
 ---
 # tasks file for rke2-workers
-- name: Set hostname for workers
-  ansible.builtin.hostname:
-    name: "uds-worker-{{ groups['workers'].index(inventory_hostname) }}"
-
 - name: Wait for first control plane to come up before adding new nodes
   ansible.builtin.wait_for:
     host: "{{ hostvars[groups['controlplane'][0]]['ansible_default_ipv4']['address'] }}"

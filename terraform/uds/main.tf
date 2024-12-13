@@ -17,9 +17,9 @@ locals {
       if var.rke2_nodes[node].ansible_info.group == group
     ]
   }
-  # Map node IP addresses to the ansible hostvars defined for that host
-  ip_to_vars = {
-    for node in vsphere_virtual_machine.uds_node : node.default_ip_address => var.rke2_nodes[node.name].ansible_info.host_vars
+  # Map node names to the ansible hostvars defined for that host 
+  node_to_vars = {
+    for node in keys(var.rke2_nodes) : node => var.rke2_nodes[node].ansible_info.host_vars
   }
   unique_templates = toset([for node in var.rke2_nodes : node.template_name])
 }
@@ -119,9 +119,9 @@ resource "vsphere_virtual_machine" "uds_node" {
 }
 
 resource "local_file" "host_vars" {
-  for_each = local.ip_to_vars
-  filename = "./ansible/host_vars/${each.key}"
-  content  = yamlencode(each.value)
+  for_each = local.node_to_vars
+  filename = "./ansible/host_vars/${vsphere_virtual_machine.uds_node[each.key].default_ip_address}"
+  content  = yamlencode(merge(each.value, { "hostname" : replace(each.key, "_", "-") }))
 }
 
 resource "terraform_data" "ansible_inventory" {
