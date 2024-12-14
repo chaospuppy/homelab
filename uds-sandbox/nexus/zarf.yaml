@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/defenseunicorns/zarf/main/zarf.schema.json
+kind: ZarfPackageConfig
+metadata:
+  name: nexus
+  version: "0.1.0"
+  architecture: amd64
+
+components:
+  - name: deploy-namespace-for-cross-ns-secret
+    required: true
+    manifests:
+      - name: nexus-ns
+        files:
+          - ./nexus-ns/nexus-ns.yaml
+  - name: postgres-password
+    required: true
+    actions:
+      onDeploy:
+        before:
+          - cmd: ./zarf tools kubectl get secret -n nexus nexus.nexus.pg-cluster.credentials.postgresql.acid.zalan.do --template={{.data.password}} | base64 -d
+            mute: true
+            setVariables:
+              - name: NEXUS_DB_PASSWORD
+                sensitive: true
+          - cmd: ./zarf tools kubectl get secret -n nexus nexus.nexus.pg-cluster.credentials.postgresql.acid.zalan.do --template={{.data.username}} | base64 -d
+            mute: true
+            setVariables:
+              - name: NEXUS_DB_USERNAME
+                sensitive: true

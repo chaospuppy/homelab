@@ -1,0 +1,53 @@
+kind: UDSBundle
+metadata:
+  name: uds-core-vsphere
+  description: uds core baseline on vsphere
+  architecture: amd64
+  version: 0.1.0
+
+packages:
+  - name: init-longhorn
+    repository: ghcr.io/naps-dev/packages/init-longhorn
+    ref: v0.39.0
+
+  - name: metallb-package
+    repository: oci://ghcr.io/defenseunicorns/packages/metallb
+    ref: 0.1.1-amd64
+    overrides:
+      addresspools:
+        addresspools:
+          variables:
+            - name: INTERFACE
+              description: Interface on which MetalLB listens
+              path: interface
+            - name: IP_ADDRESS_ADMIN_INGRESSGATEWAY
+              description: IP Address for the Istio Admin Ingress Gateway
+              path: adminIngress.ipAddressPool
+            - name: IP_ADDRESS_PASSTHROUGH_INGRESSGATEWAY
+              description: IP Address for the Istio Passthrough Ingress Gateway
+              path: passthroughIngress.ipAddressPool
+            - name: IP_ADDRESS_TENANT_INGRESSGATEWAY
+              description: IP Address for the Istio Tenant Ingress Gateway
+              path: tenantIngress.ipAddressPool
+            - name: IP_ADDRESS_POOL
+              description: IP Address pool for all Ingress Gateways
+              path: default.ipAddressPoolCIDR
+
+  - name: uds-core
+    repository: oci://ghcr.io/defenseunicorns/packages/uds/core
+    ref: 0.32.1-registry1
+    overrides:
+      loki:
+        loki:
+          values:
+            # Override default dns service name for Loki Gateway at create-time
+            - path: "global.dnsService"
+              value: "rke2-coredns-rke2-coredns"
+
+  # - name: minio-package
+  #   repository: oci://ghcr.io/defenseunicorns/packages/uds/minio-operator
+  #   ref: 6.0.2-uds.2-upstream
+
+  - name: longhorn-pepr-exemptions
+    path: ./longhorn-pepr-exemptions/
+    ref: 0.1.0

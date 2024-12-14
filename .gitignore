@@ -1,4 +1,6 @@
 **/terraform.tfstate*
 **/.terraform/*
-uds-sandbox/*
+uds-sandbox/uds-config.yaml
 **/rke2.yaml
+*.tar.gz
+*.tar.zst

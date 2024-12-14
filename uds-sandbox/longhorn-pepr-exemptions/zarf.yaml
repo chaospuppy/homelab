@@ -1,0 +1,13 @@
+kind: ZarfPackageConfig
+metadata:
+  name: longhorn-pepr-exemptions
+  description: "Pepr exemptions for Longhorn"
+  version: 0.1.0
+
+components:
+  - name: deploy-exemptions
+    required: true
+    manifests:
+      - name: longhorn-pepr-exemptions
+        files:
+          - longhorn-pepr-exemptions.yaml

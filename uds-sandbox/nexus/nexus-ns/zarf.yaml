@@ -1,0 +1,13 @@
+kind: ZarfPackageConfig
+metadata:
+  name: nexus-ns
+  description: "create namespaces for cross-ns secret functionality of pg operator"
+  version: 0.1.0
+
+components:
+  - name: deploy-namespace-for-cross-ns-secret
+    required: true
+    manifests:
+      - name: nexus-ns
+        files:
+          - ../nexus-ns/nexus-ns.yaml
